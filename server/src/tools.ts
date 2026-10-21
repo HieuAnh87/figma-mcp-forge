@@ -58,6 +58,11 @@ type ToolResult = {
 
 export type ExportFormat = "PNG" | "SVG" | "JPG" | "PDF";
 
+/** `run_script` executes arbitrary code in the user's file, so it stays off unless explicitly enabled. */
+export function isRunScriptEnabled(): boolean {
+  return process.env.FIGMA_BRIDGE_ENABLE_RUN_SCRIPT === "1";
+}
+
 export interface ScreenshotSender {
   sendWithParams(
     requestType: string,
@@ -690,6 +695,19 @@ export function registerTools(server: McpServer, node: Node, port: number): void
       );
     }
   );
+
+  if (isRunScriptEnabled()) {
+    server.tool(
+      "run_script",
+      "Run Plugin API JavaScript in the Figma plugin sandbox. The code is the body of an async function with `figma` in scope; `return` a JSON-serializable value. Calls to .remove() are rejected unless allowRemove is true. Prefer batching related edits into one script. When multiple files are connected, specify fileKey.",
+      toolInputSchemas.run_script.shape,
+      async ({ code, allowRemove, fileKey }): Promise<ToolResult> => {
+        return renderResponse(() =>
+          node.sendWithParams("run_script", undefined, { code, allowRemove }, fileKey)
+        );
+      }
+    );
+  }
 
   server.tool(
     "get_motion_styles",

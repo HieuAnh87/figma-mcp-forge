@@ -49,6 +49,7 @@ type RequestType =
   | "set_selection"
   | "scroll_and_zoom_into_view"
   | "delete_nodes"
+  | "run_script"
   | "get_motion_styles"
   | "get_node_motion"
   | "apply_animation_style"
@@ -422,6 +423,7 @@ const EDIT_REQUEST_TYPES = new Set<RequestType>([
   "group_nodes",
   "ungroup_node",
   "delete_nodes",
+  "run_script",
   "apply_animation_style",
   "remove_animation_style",
   "apply_manual_keyframe_track",
@@ -2545,6 +2547,35 @@ const handleRequest = async (request: ServerRequest): Promise<PluginResponse> =>
             deletedCount: deletions.length,
             deletions,
           },
+        };
+      }
+      case "run_script": {
+        const code = request.params?.code;
+        if (typeof code !== "string" || code.trim() === "") {
+          throw new Error("code is required for run_script");
+        }
+        // Cheap guard against accidental deletions; not a security boundary.
+        if (/\.remove\s*(?:\?\.)?\s*\(/.test(code) && request.params?.allowRemove !== true) {
+          throw new Error("run_script: code calls .remove(); pass allowRemove: true to confirm");
+        }
+        const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
+        const result = await new AsyncFunction("figma", code)(figma);
+        let serialized: string | undefined;
+        try {
+          // Symbols such as figma.mixed would otherwise be dropped or turned into null silently.
+          serialized = JSON.stringify(result, (_key, value: unknown) => {
+            if (typeof value === "symbol") {
+              throw new TypeError("symbol");
+            }
+            return value;
+          });
+        } catch {
+          throw new Error("run_script: return value must be JSON-serializable");
+        }
+        return {
+          type: request.type,
+          requestId: request.requestId,
+          data: { result: serialized === undefined ? null : JSON.parse(serialized) },
         };
       }
       case "get_motion_styles": {
