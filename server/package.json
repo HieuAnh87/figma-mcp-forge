@@ -1,10 +1,10 @@
 {
-  "name": "@gethopp/figma-mcp-bridge",
+  "name": "figma-mcp-forge",
   "version": "0.0.25",
-  "description": "MCP server that bridges Figma plugin data to AI tools without hitting API rate limits",
+  "description": "Internal fork of figma-mcp-bridge with component, variable, style, reaction and layout authoring tools",
   "type": "module",
   "bin": {
-    "figma-mcp-bridge": "dist/index.js"
+    "figma-mcp-forge": "dist/index.js"
   },
   "main": "dist/index.js",
   "files": [
@@ -12,7 +12,8 @@
   ],
   "scripts": {
     "build": "tsc",
-    "prepublishOnly": "bun run build"
+    "prepublishOnly": "bun run build",
+    "test": "tsc && node --test dist/forgeAssets.test.js"
   },
   "keywords": [
     "figma",
@@ -44,5 +45,6 @@
   },
   "engines": {
     "node": ">=20.0.0"
-  }
+  },
+  "private": true
 }

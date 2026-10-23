@@ -2,6 +2,7 @@ import { serializeNode } from "./serializer";
 import type { SerializableNode } from "./serializer";
 import { addLayersToFrame } from "../html-figma/figma";
 import { getPrototypeConnections, scanPrototype, tracePrototypeFlow } from "./prototype";
+import { handleForgeRequest, isForgeEditType, isForgeRequestType } from "./forge";
 
 type RequestType =
   | "get_document"
@@ -2747,8 +2748,18 @@ const handleRequest = async (request: ServerRequest): Promise<PluginResponse> =>
           },
         };
       }
-      default:
+      default: {
+        // Forge additions live in ./forge so upstream merges only touch this branch.
+        if (isForgeRequestType(request.type)) {
+          if (isForgeEditType(request.type)) requireEditorMode(request.type);
+          return {
+            type: request.type,
+            requestId: request.requestId,
+            data: await handleForgeRequest(request.type, request.nodeIds, request.params),
+          };
+        }
         throw new Error(`Unknown request type: ${request.type}`);
+      }
     }
   } catch (error) {
     return {

@@ -740,7 +740,7 @@ export const createImageInput = z.object({
     .string()
     .min(1)
     .describe(
-      "Image source. Accepts a local file path (absolute or relative to the MCP server cwd), an http/https URL, or a data URI."
+      "Image source. Accepts a local file path (relative to the MCP server cwd, or absolute/~ inside the cwd or a FIGMA_FORGE_ASSET_DIRS directory), an http/https URL, or a data URI."
     ),
   name: z.string().optional().describe("Optional image node name"),
   parentId: createFigmaNodeIdSchema()
@@ -762,7 +762,7 @@ export const createSvgInput = z.object({
     .string()
     .min(1)
     .describe(
-      "SVG source. Accepts raw <svg> markup or a local SVG file path inside the MCP server working directory."
+      "SVG source. Accepts raw <svg> markup or a local SVG file path inside the MCP server working directory or a FIGMA_FORGE_ASSET_DIRS directory."
     ),
   name: z.string().optional().describe("Optional SVG node name"),
   parentId: createFigmaNodeIdSchema()
@@ -1117,7 +1117,7 @@ export const toolInputSchemas = {
             .string()
             .min(1)
             .describe(
-              "Output file path (relative paths resolve from the MCP server current working directory)"
+              "Output file path. Relative paths resolve from the MCP server cwd; absolute or ~ paths may also target a FIGMA_FORGE_ASSET_DIRS directory."
             ),
           format: createExportFormatSchema()
             .optional()

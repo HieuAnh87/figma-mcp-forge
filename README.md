@@ -1,5 +1,10 @@
 # Figma MCP Bridge
 
+> [!IMPORTANT]
+> **This is Figma MCP Forge**, an internal fork of this project with extra authoring tools.
+> Install it with the steps in [FORGE.md](FORGE.md#install), not the Quick Start below:
+> the forge plugin talks to its own server on port 1995.
+
 [![Pairing with Hopp](https://gethopp.app/git/hopp-shield.svg?ref=hopp-repo)](https://gethopp.app)
 
 - [Demo](#demo)

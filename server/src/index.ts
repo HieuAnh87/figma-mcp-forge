@@ -4,6 +4,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { Node } from "./node.js";
 import { Election } from "./election.js";
+import { registerForgeTools } from "./forgeTools.js";
 import { registerTools } from "./tools.js";
 import { VERSION } from "./version.js";
 
@@ -13,7 +14,7 @@ import { VERSION } from "./version.js";
 // plugin manifest's networkAccess.allowedDomains).
 function resolvePort(): number {
   const raw = process.env.FIGMA_BRIDGE_PORT;
-  if (raw === undefined) return 1994;
+  if (raw === undefined) return 1995; // forge: 1994 stays free for upstream/figma-mcp-go
   const port = Number(raw.trim());
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
     // An explicitly set but invalid value must not silently join the stock
@@ -92,11 +93,12 @@ async function main(): Promise<void> {
   });
 
   const server = new McpServer({
-    name: "figma-bridge",
+    name: "figma-forge",
     version: VERSION,
   });
 
   registerTools(server, node, PORT);
+  registerForgeTools(server, node);
 
   console.error(`Starting MCP server (role: ${node.roleName})`);
 

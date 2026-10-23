@@ -46,13 +46,16 @@ import {
 } from "./schema.js";
 import type { BridgeResponse } from "./types.js";
 import { Follower } from "./follower.js";
+import { assetRootFor, expandAssetPath, renderScreenshotResponse } from "./forgeAssets.js";
 
 const MAX_IMAGE_BYTES = 32 * 1024 * 1024;
 const IMAGE_FETCH_TIMEOUT_MS = 15_000;
 const MAX_IMAGE_REDIRECTS = 5;
 
 type ToolResult = {
-  content: Array<{ type: "text"; text: string }>;
+  content: Array<
+    { type: "text"; text: string } | { type: "image"; data: string; mimeType: string }
+  >;
   isError?: boolean;
 };
 
@@ -242,14 +245,23 @@ export function registerTools(server: McpServer, node: Node, port: number): void
 
   server.tool(
     "get_screenshot",
-    "Export a screenshot of the selected nodes or specific nodes by ID. Returns base64-encoded image data. Works in both Figma and FigJam. When multiple files are connected, specify fileKey.",
+    "Export a screenshot of the selected nodes or specific nodes by ID. PNG/JPG come back as viewable images plus a metadata text block; SVG/PDF come back as base64 JSON. Works in both Figma and FigJam. When multiple files are connected, specify fileKey.",
     toolInputSchemas.get_screenshot.shape,
     async ({ nodeIds, format, scale, clip, fileKey }): Promise<ToolResult> => {
       const params: Record<string, unknown> = {};
       if (format) params.format = format;
       if (scale !== undefined && scale > 0) params.scale = scale;
       if (clip !== undefined) params.clip = clip;
-      return renderResponse(() => node.sendWithParams("get_screenshot", nodeIds, params, fileKey));
+      try {
+        return renderScreenshotResponse(
+          await node.sendWithParams("get_screenshot", nodeIds, params, fileKey)
+        );
+      } catch (err) {
+        return {
+          content: [{ type: "text", text: err instanceof Error ? err.message : String(err) }],
+          isError: true,
+        };
+      }
     }
   );
 
@@ -452,7 +464,10 @@ export function registerTools(server: McpServer, node: Node, port: number): void
     createImageInput.shape,
     async ({ source, fileKey, ...params }): Promise<ToolResult> => {
       try {
-        const imageBase64 = await loadImageSourceAsBase64(source, process.cwd());
+        const imageBase64 = await loadImageSourceAsBase64(
+          expandAssetPath(source),
+          assetRootFor(source)
+        );
         return await renderResponse(() =>
           node.sendWithParams("create_image", undefined, { ...params, imageBase64 }, fileKey)
         );
@@ -476,7 +491,7 @@ export function registerTools(server: McpServer, node: Node, port: number): void
     createSvgInput.shape,
     async ({ source, fileKey, ...params }): Promise<ToolResult> => {
       try {
-        const svgText = await loadSvgSource(source, process.cwd());
+        const svgText = await loadSvgSource(expandAssetPath(source), assetRootFor(source));
         return await renderResponse(() =>
           node.sendWithParams("create_svg", undefined, { ...params, svgText }, fileKey)
         );
@@ -496,11 +511,11 @@ export function registerTools(server: McpServer, node: Node, port: number): void
 
   server.tool(
     "import_html_layers",
-    "Import a DOM serialization (JSON produced by html-figma's browser htmlToFigma()) as editable Figma layers inside a new wrapper frame — frames, text, rectangles, and SVG vectors in one call. Source must be a JSON file path inside the MCP server working directory. Optionally append the wrapper into an existing frame/section via parentId. Requires the plugin to be open in the design editor. When multiple files are connected, specify fileKey.",
+    "Import a DOM serialization (JSON produced by html-figma's browser htmlToFigma()) as editable Figma layers inside a new wrapper frame — frames, text, rectangles, and SVG vectors in one call. Source must be a JSON file path inside the MCP server working directory or a FIGMA_FORGE_ASSET_DIRS directory. Optionally append the wrapper into an existing frame/section via parentId. Requires the plugin to be open in the design editor. When multiple files are connected, specify fileKey.",
     importHtmlLayersInput.shape,
     async ({ source, fileKey, ...params }): Promise<ToolResult> => {
       try {
-        const layers = await loadLayersJson(source, process.cwd());
+        const layers = await loadLayersJson(expandAssetPath(source), assetRootFor(source));
         return await renderResponse(() =>
           node.sendWithParams("import_html_layers", undefined, { ...params, layers }, fileKey)
         );
@@ -852,11 +867,24 @@ export async function executeSaveScreenshots(
   const results: SaveScreenshotItemResult[] = [];
 
   for (const [index, item] of items.entries()) {
+    let root: string;
+    try {
+      root = assetRootFor(item.outputPath);
+    } catch (err) {
+      results.push({
+        index,
+        nodeId: item.nodeId,
+        outputPath: item.outputPath,
+        success: false,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      continue;
+    }
     const result = await saveScreenshotItemToFile(
       sender,
-      item,
+      { ...item, outputPath: expandAssetPath(item.outputPath) },
       index,
-      process.cwd(),
+      root,
       format,
       scale,
       clip
