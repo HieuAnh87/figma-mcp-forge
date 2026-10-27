@@ -123,7 +123,7 @@ bun run check
 ## Gotchas for scripts (move into the figma-rebuild skill)
 
 - `listAvailableFontsAsync` lists "SF Pro" and `loadFontAsync` succeeds, but text renders with
-  `hasMissingFont: true` and width 0. Check `hasMissingFont` on the first text node; use Inter.
+  `hasMissingFont: true` and width 0. Check `hasMissingFont` on the first text node; resolve the exact installed face (SF Pro Text/Display static OTFs worked in live proof). Restart Figma after font installation. Do not silently substitute Inter.
 - A text node set to FILL while its width is 0 stays at 0 after the font is fixed. Kick it:
   FIXED → `textAutoResize = "WIDTH_AND_HEIGHT"` → `"HEIGHT"` → FILL.
 - Create text, set characters, append to the auto-layout parent, and only then set FILL.
@@ -134,3 +134,40 @@ bun run check
 
 MIT. Upstream notice: Copyright (c) gethopp, see `LICENSE.md`. Added tool
 surface modeled on figma-mcp-go by vkhanhqui (MIT).
+
+## Reliable design workflow (27 October upgrade)
+
+New tools: `design_preflight`, `audit_design`, `get_build_checkpoint`,
+`commit_build_checkpoint`. Restart the MCP client and reopen the Figma development
+plugin after rebuilding: the plugin runs the JavaScript loaded when it was opened.
+
+1. `list_files` first; reconnects can change unsaved file keys. Select an explicit file.
+2. Read source tokens/components and approved scope. Call `design_preflight` with
+   exact `{family, style}` faces and optional `roots` IDs. It loads requested fonts
+   but cannot prove glyph metrics. Never replace a required font to pass a check.
+3. `get_build_checkpoint({key})` returns stable owned node IDs and a revision.
+   Inspect those nodes before drawing. Update existing owned nodes; do not blindly
+   rerun initial creation scripts. Preserve reviewed content outside the scope.
+4. Build in small batches. Use async Plugin APIs with dynamic-page documents;
+   append children before setting FILL. Reload fonts in each script. Use wrappers
+   rather than appending arbitrary children to instances.
+5. `audit_design({rootId, allowedRadii, allowedFontSizes})` checks a bounded subtree.
+   Supply the FULL scales from current source, not a shortened design summary.
+   `complete:false` means the node/time cap was reached; audit smaller subtrees.
+   `timedOut:true` can indicate slow/offline Figma component resolution. The default
+   wall-time budget is 5000ms (`maxDurationMs`, maximum 30000); this is not a clean audit. Hidden
+   branches are skipped. Clipping findings may be intentional. Mixed text runs,
+   internal glyph overflow, transforms and URL navigation need visual/manual proof.
+6. Export a fresh screenshot and inspect actual pixels, required copy and states.
+   Structural success is not visual acceptance. Use unique export paths; retain
+   the best prior version and compare after targeted fixes.
+7. `commit_build_checkpoint({key,expectedRevision,operationId,roots,note})` records
+   a completed, inspected batch. Use a unique operation ID per batch; retrying the
+   last identical commit is safe. The receipt is NOT a transaction or rollback of
+   drawing operations. After a timeout, inspect live nodes before retrying drawing.
+   A revision conflict means another writer changed the receipt: read/reconcile.
+
+Keep one writer per owned design subtree. Review at most 2–3 deliberate refinement
+rounds initially, report remaining issues, and present options for human approval.
+A source/PRD checkpoint and screenshot paths belong in the receipt note; full specs
+remain in the repository. No auto-repair or deletion is performed by the audit.

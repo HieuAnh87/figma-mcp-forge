@@ -13,7 +13,7 @@
   "scripts": {
     "build": "tsc",
     "prepublishOnly": "bun run build",
-    "test": "tsc && node --test dist/forgeAssets.test.js"
+    "test": "tsc && node --test dist/*.test.js"
   },
   "keywords": [
     "figma",

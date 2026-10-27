@@ -55,6 +55,55 @@ export function registerForgeTools(server: McpServer, node: Node): void {
       return call(node, name, ids, params, key);
     });
 
+  tool(
+    "design_preflight",
+    "Before building: verify target node IDs and exact requested font faces. Does not create product nodes. Loading a font does not prove rendered glyphs; audit after building.",
+    {
+      fonts: z
+        .array(z.object({ family: z.string(), style: z.string() }))
+        .max(40)
+        .optional(),
+      // Deliberately different from nodeIds, which the generic wrapper sends separately.
+      roots: z.array(z.string()).max(50).optional(),
+    }
+  );
+  tool(
+    "audit_design",
+    "Read-only bounded structural audit: missing fonts, zero-size text, unstyled text, broken instance mains, dead native reaction targets, clipping candidates and optional token scales. Inspect complete/issuesTruncated. No claim of visual approval; inspect fresh screenshots too.",
+    {
+      rootId: z.string().optional(),
+      maxNodes: z.number().int().min(1).max(20000).optional(),
+      maxDurationMs: z
+        .number()
+        .int()
+        .min(1)
+        .max(30000)
+        .optional()
+        .describe(
+          "Audit wall-time budget; default 5000ms. Slow component lookups return an incomplete audit, not a clean result."
+        ),
+      maxIssues: z.number().int().min(1).max(1000).optional(),
+      allowedRadii: z.array(z.number()).max(100).optional(),
+      allowedFontSizes: z.array(z.number()).max(100).optional(),
+    }
+  );
+  tool(
+    "get_build_checkpoint",
+    "Read a build's stable node registry and revision before updating or retrying after disconnect. Returns whether saved nodes still exist.",
+    { key: z.string().regex(/^[a-zA-Z0-9_-]{1,80}$/) }
+  );
+  tool(
+    "commit_build_checkpoint",
+    "Record a validated batch's node IDs in document plugin data using expectedRevision and a unique operationId. Same last operation/content replays without mutation; conflicts require reconciliation. This records progress, NOT rollback or atomicity of preceding drawing scripts.",
+    {
+      key: z.string().regex(/^[a-zA-Z0-9_-]{1,80}$/),
+      expectedRevision: z.number().int().min(0),
+      operationId: z.string().regex(/^[a-zA-Z0-9_-]{1,100}$/),
+      roots: z.array(z.string()).max(500),
+      note: z.string().max(4000).optional(),
+    }
+  );
+
   // --- components --------------------------------------------------------
   tool(
     "create_component",

@@ -1,3 +1,4 @@
+import { qualityPreflight, qualityAudit, checkpointGet, checkpointCommit } from "./forgeQuality";
 // Forge additions: authoring tools the upstream bridge does not provide.
 // Tool names and parameters follow the figma-mcp-go plugin (MIT) so agents can
 // call them the same way. The manifest uses documentAccess "dynamic-page", so
@@ -6,6 +7,9 @@
 type Params = Record<string, unknown>;
 
 export const FORGE_READ_TYPES = [
+  "design_preflight",
+  "audit_design",
+  "get_build_checkpoint",
   "get_local_components",
   "export_tokens",
   "get_reactions",
@@ -18,6 +22,7 @@ export const FORGE_READ_TYPES = [
 ] as const;
 
 export const FORGE_EDIT_TYPES = [
+  "commit_build_checkpoint",
   "create_component",
   "create_instance",
   "combine_as_variants",
@@ -986,6 +991,10 @@ export async function handleForgeRequest(
   nodeIds: string[] | undefined,
   params: Params | undefined
 ): Promise<unknown> {
+  if (type === "design_preflight") return qualityPreflight(params ?? {});
+  if (type === "audit_design") return qualityAudit(params ?? {});
+  if (type === "get_build_checkpoint") return checkpointGet(params ?? {});
+  if (type === "commit_build_checkpoint") return checkpointCommit(params ?? {});
   const handler = handlers[type];
   if (!handler) throw new Error(`Unknown forge request type: ${type}`);
   return handler(nodeIds, params ?? {});
