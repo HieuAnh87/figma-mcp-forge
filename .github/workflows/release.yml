@@ -52,7 +52,7 @@ jobs:
       - name: Publish using npm trusted publishing
         env:
           RELEASE_VERSION: ${{ inputs.version }}
-        run: npm publish "server/figma-mcp-forge-${RELEASE_VERSION}.tgz" --access public --provenance
+        run: npm publish "./server/figma-mcp-forge-${RELEASE_VERSION}.tgz" --access public --provenance
       - name: GitHub release
         uses: softprops/action-gh-release@v2
         with:

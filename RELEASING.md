@@ -19,7 +19,7 @@ license. Server and plugin package versions must match.
 5. Authenticate with `npm login --registry=https://registry.npmjs.org` and check
    `npm whoami`. Complete npm's account/2FA requirements in your own browser.
 6. Publish the tested tarball:
-   `npm publish server/figma-mcp-forge-VERSION.tgz --access public`.
+   `npm publish ./server/figma-mcp-forge-VERSION.tgz --access public`.
 7. Verify `npm view figma-mcp-forge@VERSION version dist.integrity`, compare the
    integrity to the tested package, and test the registry install. Update the
    installed server and restart MCP clients and the matching Figma plugin.
