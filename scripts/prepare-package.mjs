@@ -1,5 +1,6 @@
+import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { copyFileSync, mkdirSync, readFileSync, rmSync } from "node:fs";
+import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
@@ -27,3 +28,24 @@ for (const name of ["manifest.json", "dist/code.js", "dist/index.html"]) {
 for (const name of ["README.md", "FORGE.md", "RELEASING.md", "LICENSE.md"]) {
   copyFileSync(join(root, name), join(server, name));
 }
+
+const assets = ["manifest.json", "dist/code.js", "dist/index.html"];
+writeFileSync(
+  join(server, "plugin/forge-release.json"),
+  JSON.stringify(
+    {
+      package: "figma-mcp-forge",
+      version: version(server),
+      files: Object.fromEntries(
+        assets.map((name) => [
+          name,
+          createHash("sha256")
+            .update(readFileSync(join(server, "plugin", name)))
+            .digest("hex"),
+        ])
+      ),
+    },
+    null,
+    2
+  ) + "\n"
+);

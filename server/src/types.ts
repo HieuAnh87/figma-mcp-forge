@@ -27,6 +27,9 @@ export interface RPCResponse {
 export interface ConnectedFile {
   fileKey: string;
   fileName: string;
+  pluginVersion: string | null;
+  protocolVersion: number | null;
+  compatible: boolean;
 }
 
 export enum Role {

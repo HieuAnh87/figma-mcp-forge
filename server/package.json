@@ -15,7 +15,8 @@
     "plugin/dist/index.html",
     "FORGE.md",
     "LICENSE.md",
-    "RELEASING.md"
+    "RELEASING.md",
+    "plugin/forge-release.json"
   ],
   "scripts": {
     "build": "tsc",

@@ -15,14 +15,27 @@ Bun is not needed to run the published package.
 
 ```sh
 npm install --global figma-mcp-forge@0.1.0
-npm root --global
+figma-mcp-forge plugin install
 ```
 
-Under the directory printed by the second command, find
-`figma-mcp-forge/plugin/manifest.json`.
-In Figma, choose **Plugins → Development → Import plugin from manifest** and
-select that file. Run **Figma MCP Forge** in each file you want to connect, and
-keep the plugin open.
+The second command prints the stable manifest path (by default
+`~/.local/share/figma-mcp-forge/plugin/manifest.json`). In Figma Desktop, choose
+**Plugins → Development → Import plugin from manifest** and select that file.
+Run **Figma MCP Forge** in each file you want to connect and keep the plugin open.
+You import this stable path once; it does not move when you switch Node/NVM versions.
+The CLI must still be installed for the Node version your client uses.
+
+```sh
+figma-mcp-forge plugin path    # Print the manifest path without changing files
+figma-mcp-forge doctor        # Check install, running server and connected plugins
+figma-mcp-forge --version
+```
+
+`plugin install` verifies bundled checksums, stages the complete plugin, and
+replaces only an unmodified Forge-managed installation. It refuses unrelated
+folders, symlinks and modified assets. Set `FIGMA_FORGE_HOME` to choose another
+persistent installation root. Restart/reopen the plugin after updating files;
+the open plugin continues running the previously loaded JavaScript.
 
 Configure your MCP client with the command `figma-mcp-forge`. The standard
 server definition is:
@@ -72,8 +85,7 @@ when multiple files are connected. A desktop app that does not inherit your
 shell PATH may need the absolute executable path from `command -v figma-mcp-forge`.
 
 An alternative server command is `npx -y figma-mcp-forge@0.1.0`; the plugin must
-still be installed separately from the same version. Prefer the global install
-above for a stable plugin location. Disable other Figma bridges in the client
+still be installed separately from the same version. Use `plugin install` to keep the Figma manifest at a stable location. Disable other Figma bridges in the client
 configuration when using Forge alone. Do not configure the upstream package
 `@gethopp/figma-mcp-bridge`: it uses a different bridge port.
 
@@ -100,8 +112,12 @@ Forge listens on loopback port **1995** by default. Multiple client processes
 share the local leader connection. See [FORGE.md](FORGE.md) for configuration,
 authoring tools, font handling, and recovery guidance.
 
-Upgrade the npm package, close and reopen the Figma plugin, and restart MCP
-clients together so their server and plugin versions match.
+Upgrade the npm package, run `figma-mcp-forge plugin install`, close and reopen
+the Figma plugin, and restart all MCP clients together. Forge requires matching
+server/plugin versions and transport protocol. `doctor` reports stale versions,
+missing plugin files, an occupied port or no connected files, with a nonzero exit
+code when attention is needed. It never starts/restarts servers or edits designs.
+An old plugin is listed for diagnosis but operations are blocked until it is updated.
 
 ## Development and release
 

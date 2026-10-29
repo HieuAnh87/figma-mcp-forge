@@ -24,7 +24,8 @@ Install the npm package and import its bundled plugin following
 [the README](README.md#install). Both parts ship together as `figma-mcp-forge`.
 For source development, use `node /absolute/path/server/dist/index.js` after
 building; the plugin manifest is `plugin/manifest.json` in this repository.
-Restart the MCP clients and reopen the plugin after upgrading.
+Run `figma-mcp-forge plugin install`, restart MCP clients and reopen the plugin
+after upgrading. Use `figma-mcp-forge doctor` to diagnose installation/version issues.
 
 ### Configuration
 

@@ -1,3 +1,6 @@
+import { randomUUID } from "node:crypto";
+import { VERSION } from "./version.js";
+import { PROTOCOL_VERSION } from "./health.js";
 import { WebSocketServer, WebSocket } from "ws";
 import type { IncomingMessage } from "node:http";
 import type { Duplex } from "node:stream";
@@ -8,6 +11,7 @@ interface PendingRequest {
   reject: (err: Error) => void;
   timeout: ReturnType<typeof setTimeout>;
   ws: WebSocket;
+  type: string;
 }
 
 interface ConnectionEntry {
@@ -15,16 +19,17 @@ interface ConnectionEntry {
   fileKey: string;
   fileName: string;
   isAlive: boolean;
+  pluginVersion: string | null;
+  protocolVersion: number | null;
 }
 
 export class Bridge {
   private wss: WebSocketServer;
   private connections = new Map<string, ConnectionEntry>();
   private pending = new Map<string, PendingRequest>();
-  private counter = 0;
   private pingTimer: ReturnType<typeof setInterval> | null = null;
 
-  constructor() {
+  constructor(private requestTimeoutMs = 180_000) {
     this.wss = new WebSocketServer({ noServer: true });
     this.wss.on("error", (err) => {
       console.error("WebSocketServer error:", err);
@@ -61,14 +66,30 @@ export class Bridge {
     }
 
     this.wss.handleUpgrade(request, socket, head, (ws) => {
-      this.handleConnection(ws, fileKey, fileName);
+      this.handleConnection(
+        ws,
+        fileKey,
+        fileName,
+        url.searchParams.get("version"),
+        url.searchParams.get("protocol")
+      );
     });
   }
 
-  private handleConnection(ws: WebSocket, fileKey: string, fileName: string): void {
+  private handleConnection(
+    ws: WebSocket,
+    fileKey: string,
+    fileName: string,
+    pluginVersion: string | null,
+    protocol: string | null
+  ): void {
     // Replace existing connection for the same file
     const existing = this.connections.get(fileKey);
     if (existing) {
+      this.rejectPendingForSocket(
+        existing.ws,
+        "Plugin connection replaced; inspect live nodes before retrying edits"
+      );
       existing.ws.close();
     }
     this.connections.set(fileKey, {
@@ -76,6 +97,8 @@ export class Bridge {
       fileKey,
       fileName,
       isAlive: true,
+      pluginVersion,
+      protocolVersion: protocol === null ? null : Number(protocol),
     });
     console.error(`Plugin connected: ${fileName} (${fileKey})`);
 
@@ -88,7 +111,12 @@ export class Bridge {
       try {
         const resp: BridgeResponse = JSON.parse(data.toString());
         const pending = this.pending.get(resp.requestId);
-        if (pending) {
+        if (
+          pending &&
+          pending.ws === ws &&
+          resp.type === pending.type &&
+          this.connections.get(fileKey)?.ws === ws
+        ) {
           clearTimeout(pending.timeout);
           this.pending.delete(resp.requestId);
           pending.resolve(resp);
@@ -144,6 +172,7 @@ export class Bridge {
             : " No files are currently connected.";
         throw new Error(`No plugin connected for fileKey "${fileKey}".${hint}`);
       }
+      this.requireCompatible(entry);
       return entry.ws;
     }
 
@@ -153,6 +182,7 @@ export class Bridge {
 
     if (this.connections.size === 1) {
       const entry = this.connections.values().next().value!;
+      this.requireCompatible(entry);
       return entry.ws;
     }
 
@@ -162,10 +192,21 @@ export class Bridge {
     );
   }
 
+  private requireCompatible(entry: ConnectionEntry): void {
+    if (entry.pluginVersion !== VERSION || entry.protocolVersion !== PROTOCOL_VERSION) {
+      throw new Error(
+        `Plugin ${entry.fileName} is incompatible (version ${entry.pluginVersion ?? "unknown"}). Install/open the Forge ${VERSION} plugin and restart it before editing.`
+      );
+    }
+  }
+
   listConnectedFiles(): ConnectedFile[] {
     return [...this.connections.values()].map((entry) => ({
       fileKey: entry.fileKey,
       fileName: entry.fileName,
+      pluginVersion: entry.pluginVersion,
+      protocolVersion: entry.protocolVersion,
+      compatible: entry.pluginVersion === VERSION && entry.protocolVersion === PROTOCOL_VERSION,
     }));
   }
 
@@ -207,10 +248,14 @@ export class Bridge {
 
       const timeout = setTimeout(() => {
         this.pending.delete(requestId);
-        reject(new Error("Request timed out (3 minutes)"));
-      }, 180_000);
+        reject(
+          new Error(
+            `Request timed out after ${this.requestTimeoutMs}ms. The plugin operation may still be running; inspect live nodes before retrying edits.`
+          )
+        );
+      }, this.requestTimeoutMs);
 
-      this.pending.set(requestId, { resolve, reject, timeout, ws: conn });
+      this.pending.set(requestId, { resolve, reject, timeout, ws: conn, type: requestType });
 
       conn.send(JSON.stringify(request), (err) => {
         if (err) {
@@ -223,12 +268,7 @@ export class Bridge {
   }
 
   private nextId(): string {
-    this.counter++;
-    const now = new Date();
-    const hh = String(now.getHours()).padStart(2, "0");
-    const mm = String(now.getMinutes()).padStart(2, "0");
-    const ss = String(now.getSeconds()).padStart(2, "0");
-    return `req-${hh}${mm}${ss}-${this.counter}`;
+    return randomUUID();
   }
 
   close(): void {

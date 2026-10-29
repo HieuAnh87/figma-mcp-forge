@@ -6,7 +6,7 @@ import { validateRpc } from "./schema.js";
 import { executeSaveScreenshots, isRunScriptEnabled } from "./tools.js";
 import type { ExportFormat } from "./tools.js";
 import type { RPCRequest, RPCResponse } from "./types.js";
-import { VERSION } from "./version.js";
+import { health } from "./health.js";
 
 const loopback = new BlockList();
 loopback.addSubnet("127.0.0.0", 8, "ipv4");
@@ -47,7 +47,7 @@ export class Leader {
       const server = http.createServer((req, res) => {
         if (req.url === "/ping" && req.method === "GET") {
           res.writeHead(200, { "Content-Type": "application/json" });
-          res.end(JSON.stringify({ status: "ok", version: VERSION }));
+          res.end(JSON.stringify(health()));
           return;
         }
 

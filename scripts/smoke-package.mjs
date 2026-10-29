@@ -3,6 +3,7 @@ import { mkdtempSync, readFileSync, existsSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { createRequire } from "node:module";
 import { createServer } from "node:net";
 import assert from "node:assert/strict";
 const tarball = process.argv[2];
@@ -15,6 +16,15 @@ try {
     { stdio: "inherit" }
   );
   const pkg = join(dir, "node_modules/figma-mcp-forge");
+  const entry = join(pkg, "dist/index.js");
+  const env = { ...process.env, FIGMA_FORGE_HOME: join(dir, "stable-forge") };
+  const cli = (...args) =>
+    execFileSync(process.execPath, [entry, ...args], { env, encoding: "utf8" });
+  const expectedVersion = JSON.parse(readFileSync(join(pkg, "package.json"), "utf8")).version;
+  assert.equal(cli("--version").trim(), expectedVersion);
+  cli("plugin", "install");
+  assert.ok(existsSync(cli("plugin", "path").trim()));
+  cli("plugin", "install"); // repeat upgrade must preserve a working install
   const manifest = JSON.parse(readFileSync(join(pkg, "plugin/manifest.json"), "utf8"));
   for (const name of [manifest.main, manifest.ui])
     assert.ok(existsSync(join(pkg, "plugin", name)), `Missing ${name}`);
@@ -51,6 +61,26 @@ try {
     const result = await client.callTool({ name: "list_files", arguments: {} });
     assert.ok(!result.isError);
     assert.deepEqual(JSON.parse(result.content.find((c) => c.type === "text").text), []);
+    const { WebSocket } = createRequire(join(pkg, "package.json"))("ws");
+    const ws = new WebSocket(
+      `ws://127.0.0.1:${port}/ws?fileKey=smoke&version=${expectedVersion}&protocol=1`
+    );
+    await new Promise((resolve, reject) => {
+      ws.once("open", resolve);
+      ws.once("error", reject);
+    });
+    try {
+      const report = JSON.parse(
+        execFileSync(process.execPath, [entry, "doctor", "--json"], {
+          env: { ...env, FIGMA_BRIDGE_PORT: String(port) },
+          encoding: "utf8",
+        })
+      );
+      assert.equal(report.ok, true);
+      assert.equal(report.files[0].compatible, true);
+    } finally {
+      ws.terminate();
+    }
     console.log(
       `Package smoke passed: ${declared.name}@${declared.version}, ${tools.length} tools and matching plugin assets`
     );

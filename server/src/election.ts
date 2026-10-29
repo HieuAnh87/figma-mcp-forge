@@ -1,3 +1,4 @@
+import { probeLeader } from "./health.js";
 import type { Node } from "./node.js";
 import { Role } from "./types.js";
 
@@ -12,6 +13,7 @@ import { Role } from "./types.js";
 export class Election {
   private interval: ReturnType<typeof setInterval> | null = null;
   private leaderUrl: string;
+  private checking = false;
 
   constructor(
     private port: number,
@@ -27,9 +29,15 @@ export class Election {
     // Continuous monitoring with random jitter (3-5 s)
     const jitter = 3_000 + Math.random() * 2_000;
     this.interval = setInterval(() => {
-      this.checkAndUpdateRole().catch((err) => {
-        console.error("Election check error:", err);
-      });
+      if (this.checking) return;
+      this.checking = true;
+      this.checkAndUpdateRole()
+        .catch((err) => {
+          console.error("Election check error:", err);
+        })
+        .finally(() => {
+          this.checking = false;
+        });
     }, jitter);
   }
 
@@ -85,13 +93,6 @@ export class Election {
   }
 
   private async pingLeader(): Promise<boolean> {
-    try {
-      const response = await fetch(`${this.leaderUrl}/ping`, {
-        signal: AbortSignal.timeout(2_000),
-      });
-      return response.ok;
-    } catch {
-      return false;
-    }
+    return (await probeLeader(this.leaderUrl)) !== null;
   }
 }

@@ -1,3 +1,4 @@
+import { probeLeader } from "./health.js";
 import type { BridgeResponse, ConnectedFile, RPCRequest, RPCResponse } from "./types.js";
 
 /**
@@ -16,6 +17,7 @@ export class Follower {
     params?: Record<string, unknown>,
     fileKey?: string
   ): Promise<BridgeResponse> {
+    await this.requireLeader();
     const rpcReq: RPCRequest = { tool: requestType };
     if (nodeIds && nodeIds.length > 0) rpcReq.nodeIds = nodeIds;
     if (params && Object.keys(params).length > 0) rpcReq.params = params;
@@ -49,6 +51,7 @@ export class Follower {
   }
 
   async listConnectedFiles(): Promise<ConnectedFile[]> {
+    await this.requireLeader();
     const response = await fetch(`${this.leaderUrl}/rpc`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -68,14 +71,12 @@ export class Follower {
     return (rpcResp.data as ConnectedFile[]) ?? [];
   }
 
+  private async requireLeader(): Promise<void> {
+    if (!(await probeLeader(this.leaderUrl)))
+      throw new Error("Forge leader is unavailable; retry after reconnection");
+  }
+
   async ping(): Promise<boolean> {
-    try {
-      const response = await fetch(`${this.leaderUrl}/ping`, {
-        signal: AbortSignal.timeout(2_000),
-      });
-      return response.ok;
-    } catch {
-      return false;
-    }
+    return (await probeLeader(this.leaderUrl)) !== null;
   }
 }

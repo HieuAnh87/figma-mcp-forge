@@ -1,4 +1,5 @@
 interface ImportMetaEnv {
+  readonly FORGE_VERSION: string;
   /**
    * WebSocket endpoint of the bridge server. Overrides the built-in default.
    * A custom endpoint must also be listed in manifest.json's

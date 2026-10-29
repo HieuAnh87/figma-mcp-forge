@@ -6,6 +6,7 @@ import { Node } from "./node.js";
 import { Election } from "./election.js";
 import { registerForgeTools } from "./forgeTools.js";
 import { registerTools } from "./tools.js";
+import { runCli } from "./cli.js";
 import { VERSION } from "./version.js";
 
 // Overridable so a fork/test instance can run beside a stock 1994 bridge
@@ -106,7 +107,11 @@ async function main(): Promise<void> {
   await server.connect(transport);
 }
 
-main().catch((err) => {
+async function start(): Promise<void> {
+  if (!(await runCli(process.argv.slice(2), PORT))) await main();
+}
+
+start().catch((err) => {
   console.error("Fatal error:", err);
   process.exit(1);
 });

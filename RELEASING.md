@@ -22,7 +22,8 @@ license. Server and plugin package versions must match.
    `npm publish ./server/figma-mcp-forge-VERSION.tgz --access public`.
 7. Verify `npm view figma-mcp-forge@VERSION version dist.integrity`, compare the
    integrity to the tested package, and test the registry install. Update the
-   installed server and restart MCP clients and the matching Figma plugin.
+   installed server, run `figma-mcp-forge plugin install`, restart MCP clients and
+   reopen the matching Figma plugin. Verify with `figma-mcp-forge doctor`.
 
 The initial release requires an authenticated npm account. For subsequent CI
 releases, configure an npm trusted publisher for `HieuAnh87/figma-mcp-forge`,

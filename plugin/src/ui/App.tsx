@@ -142,7 +142,7 @@ export default function App() {
         previousSocket.close();
       }
 
-      const wsUrl = `${WS_BASE_URL}?fileKey=${encodeURIComponent(status.fileKey)}&fileName=${encodeURIComponent(status.fileName)}`;
+      const wsUrl = `${WS_BASE_URL}?version=${encodeURIComponent(import.meta.env.FORGE_VERSION)}&protocol=1&fileKey=${encodeURIComponent(status.fileKey)}&fileName=${encodeURIComponent(status.fileName)}`;
       const ws = new WebSocket(wsUrl);
       socketRef.current = ws;
 

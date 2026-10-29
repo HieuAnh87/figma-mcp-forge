@@ -62,7 +62,12 @@ export class Node {
     if (this._role === Role.Leader) return;
 
     const leader = new Leader(this.port, this.host);
-    await leader.start();
+    try {
+      await leader.start();
+    } catch (error) {
+      leader.stop();
+      throw error;
+    }
 
     this.leader = leader;
     this._role = Role.Leader;
