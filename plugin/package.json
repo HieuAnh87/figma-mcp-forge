@@ -1,7 +1,7 @@
 {
-  "name": "figma-mcp-bridge-plugin",
+  "name": "figma-mcp-forge-plugin",
   "private": true,
-  "version": "0.0.25",
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
     "dev": "concurrently \"vite build --watch\" \"vite build --watch -c vite.config.main.ts\"",

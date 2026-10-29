@@ -1,19 +1,26 @@
 {
   "name": "figma-mcp-forge",
-  "version": "0.0.25",
-  "description": "Internal fork of figma-mcp-bridge with component, variable, style, reaction and layout authoring tools",
+  "version": "0.1.0",
+  "description": "Read, edit, and audit live Figma and FigJam documents from MCP clients; includes the matching Figma plugin.",
   "type": "module",
   "bin": {
     "figma-mcp-forge": "dist/index.js"
   },
   "main": "dist/index.js",
   "files": [
-    "dist"
+    "dist/**/*.js",
+    "!dist/**/*.test.js",
+    "plugin/manifest.json",
+    "plugin/dist/code.js",
+    "plugin/dist/index.html",
+    "FORGE.md",
+    "LICENSE.md",
+    "RELEASING.md"
   ],
   "scripts": {
     "build": "tsc",
-    "prepublishOnly": "bun run build",
-    "test": "tsc && node --test dist/*.test.js"
+    "test": "tsc && node --test dist/*.test.js",
+    "prepack": "node ../scripts/prepare-package.mjs"
   },
   "keywords": [
     "figma",
@@ -24,12 +31,12 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/gethopp/figma-mcp-bridge.git",
+    "url": "git+https://github.com/HieuAnh87/figma-mcp-forge.git",
     "directory": "server"
   },
-  "homepage": "https://github.com/gethopp/figma-mcp-bridge#readme",
+  "homepage": "https://github.com/HieuAnh87/figma-mcp-forge#readme",
   "bugs": {
-    "url": "https://github.com/gethopp/figma-mcp-bridge/issues"
+    "url": "https://github.com/HieuAnh87/figma-mcp-forge/issues"
   },
   "license": "MIT",
   "dependencies": {
@@ -46,5 +53,8 @@
   "engines": {
     "node": ">=20.0.0"
   },
-  "private": true
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
 }

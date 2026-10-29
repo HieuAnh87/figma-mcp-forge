@@ -1,6 +1,6 @@
 # Figma MCP Forge
 
-Internal fork of [gethopp/figma-mcp-bridge](https://github.com/gethopp/figma-mcp-bridge)
+Fork of [gethopp/figma-mcp-bridge](https://github.com/gethopp/figma-mcp-bridge)
 (MIT, pinned at `v0.0.25`) that adds the authoring tools the bridge leaves out:
 components and instances, variables, styles, prototype reactions, child layout
 sizing, and document utilities. Tool names and parameters for the added tools
@@ -20,34 +20,11 @@ and are wired in with a few lines in `plugin/src/main/code.ts` and
 Requirements: Node 20+, the Figma **desktop** app (the browser version cannot import
 development plugins), and an MCP client such as Claude Code.
 
-The release zip already contains the built plugin (`plugin/dist/`) and server
-(`server/dist/`), so only the server's runtime dependencies need installing:
-
-```bash
-cd figma-mcp-forge/server
-npm install --omit=dev
-```
-
-1. **Plugin.** In Figma Desktop: Plugins → Development → Import plugin from manifest…
-   and pick `plugin/manifest.json`. Open a design file and run **Figma MCP Forge**
-   (Plugins → Development). Keep its window open while the agent works.
-2. **MCP server.** Register it with Claude Code (run from the unzipped folder):
-
-   ```bash
-   claude mcp add -s user figma-forge \
-     -e FIGMA_BRIDGE_ENABLE_RUN_SCRIPT=1 \
-     -e FIGMA_FORGE_ASSET_DIRS="$HOME/Pictures:$HOME/.cache/figma-forge" \
-     -- node "$PWD/server/dist/index.js"
-   ```
-
-   Other clients take the same command in their JSON config:
-   `{"command": "node", "args": ["/abs/path/server/dist/index.js"], "env": {...}}`.
-
-3. Start a new Claude Code session and ask it to call `list_files`; the open file
-   should be listed.
-
-Ignore the upstream README's Quick Start (`npx @gethopp/figma-mcp-bridge`): that
-installs the stock bridge on port 1994, which this plugin does not talk to.
+Install the npm package and import its bundled plugin following
+[the README](README.md#install). Both parts ship together as `figma-mcp-forge`.
+For source development, use `node /absolute/path/server/dist/index.js` after
+building; the plugin manifest is `plugin/manifest.json` in this repository.
+Restart the MCP clients and reopen the plugin after upgrading.
 
 ### Configuration
 
@@ -65,12 +42,12 @@ bun run check          # builds server and plugin, typechecks, prettier
 cd server && npm test  # asset-path unit tests
 ```
 
-## Coexistence
+## Bridge selection
 
 Forge listens on `ws://localhost:1995` (upstream and figma-mcp-go use 1994), the
 plugin is named "Figma MCP Forge" with id `figma-mcp-forge`, and the MCP server
-reports itself as `figma-forge`. It can run beside figma-mcp-go; open only one
-of the two plugins in a given file.
+reports itself as `figma-forge`. When using Forge alone, remove other Figma bridge entries from your MCP clients
+and run only the Forge plugin. Keep the upstream attribution, not its install configuration.
 
 ## Added tools
 
